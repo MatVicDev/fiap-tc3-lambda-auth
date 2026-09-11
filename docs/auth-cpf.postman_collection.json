@@ -1,0 +1,36 @@
+{
+  "info": {
+    "name": "fiap-tc3-lambda-auth",
+    "description": "Autenticação por CPF (Tech Challenge Fase 3)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://SUBSTITUA-PELO-API-ENDPOINT.execute-api.us-east-1.amazonaws.com" }
+  ],
+  "item": [
+    {
+      "name": "Login por CPF - sucesso",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/cpf",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cpf\": \"123.456.789-09\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Login por CPF - CPF inválido",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/cpf",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cpf\": \"111.111.111-11\"\n}"
+        }
+      }
+    }
+  ]
+}
