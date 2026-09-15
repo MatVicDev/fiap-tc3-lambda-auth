@@ -19,7 +19,7 @@ Substituir o login usuário/senha para o fluxo de cliente final: em vez de crede
 | PyJWT | Emissão do JWT (mesmo algoritmo/claims do monólito) |
 | psycopg2 | Conexão direta ao RDS PostgreSQL |
 | boto3 / AWS Secrets Manager | Credenciais do banco e chave JWT nunca em variável de ambiente em texto puro |
-| Terraform | Lambda, IAM role, API Gateway HTTP API, Secrets Manager |
+| Terraform | Lambda, API Gateway HTTP API, Secrets Manager |
 | AWS API Gateway (HTTP API) | Endpoint público `POST /auth/cpf` |
 | pytest | Testes do algoritmo de validação de CPF |
 | GitHub Actions | CI/CD |

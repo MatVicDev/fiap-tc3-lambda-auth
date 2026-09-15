@@ -41,46 +41,17 @@ resource "aws_ssm_parameter" "jwt_secret_arn" {
   value = aws_secretsmanager_secret.jwt_secret.arn
 }
 
-resource "aws_iam_role" "lambda_exec" {
-  name = "fiap-tc3-auth-cpf-${var.ambiente}"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = { Service = "lambda.amazonaws.com" }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
-  role       = aws_iam_role.lambda_exec.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
-  role       = aws_iam_role.lambda_exec.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
-
-resource "aws_iam_role_policy" "lambda_read_secrets" {
-  name = "read-jwt-and-db-secrets"
-  role = aws_iam_role.lambda_exec.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["secretsmanager:GetSecretValue"]
-      Resource = [aws_secretsmanager_secret.jwt_secret.arn, data.aws_ssm_parameter.rds_secret_arn.value]
-    }]
-  })
+# Neste ambiente (AWS Academy Learner Lab) o usuário não tem permissão para
+# iam:CreateRole/iam:AttachRolePolicy — só iam:PassRole para a role
+# pré-existente "LabRole", que já tem secretsmanager:GetSecretValue, logs e
+# permissões de rede de VPC (ENI) necessárias para esta Lambda.
+data "aws_iam_role" "lab_role" {
+  name = "LabRole"
 }
 
 resource "aws_lambda_function" "auth_cpf" {
   function_name = "fiap-tc3-auth-cpf-${var.ambiente}"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = data.aws_iam_role.lab_role.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.12"
   timeout       = 10
