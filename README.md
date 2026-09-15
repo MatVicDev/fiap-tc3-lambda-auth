@@ -7,7 +7,7 @@ Function Serverless de autenticação por CPF do Tech Challenge Fase 3 (SOAT/FIA
 Substituir o login usuário/senha para o fluxo de cliente final: em vez de credenciais, o cliente se autentica com o próprio CPF. A função:
 
 1. Valida o CPF (dígitos verificadores).
-2. Consulta a tabela `clientes` do PostgreSQL gerenciado (RDS) por esse CPF.
+2. Consulta a tabela `clientes` do Postgres (provisionado por [`fiap-tc3-infra-db`](https://github.com/MatVicDev/fiap-tc3-infra-db)) por esse CPF.
 3. Se o cliente existe e está `ATIVO`, emite um JWT (`sub=cpf`, `role=CLIENTE`, HS256) assinado com o mesmo segredo usado pela aplicação principal.
 4. Se não existe → 404. Se existe mas está `INATIVO` → 403. Se o CPF é inválido → 400.
 
@@ -17,7 +17,7 @@ Substituir o login usuário/senha para o fluxo de cliente final: em vez de crede
 |---|---|
 | Python 3.12 | Runtime da Lambda |
 | PyJWT | Emissão do JWT (mesmo algoritmo/claims do monólito) |
-| psycopg2 | Conexão direta ao RDS PostgreSQL |
+| psycopg2 | Conexão direta ao Postgres |
 | boto3 / AWS Secrets Manager | Credenciais do banco e chave JWT nunca em variável de ambiente em texto puro |
 | Terraform | Lambda, API Gateway HTTP API, Secrets Manager |
 | AWS API Gateway (HTTP API) | Endpoint público `POST /auth/cpf` |
@@ -30,8 +30,8 @@ Substituir o login usuário/senha para o fluxo de cliente final: em vez de crede
 flowchart LR
     Cliente["App do cliente"] -->|POST /auth/cpf| APIGW["API Gateway (HTTP API)"]
     APIGW --> Lambda["Lambda: auth-cpf"]
-    Lambda -->|consulta cliente| RDS[("RDS PostgreSQL\n(fiap-tc3-infra-db)")]
-    Lambda -->|lê segredos| SM["Secrets Manager\n(JWT secret + credenciais RDS)"]
+    Lambda -->|consulta cliente, via NLB interno| DB[("Postgres\nStatefulSet no EKS — fiap-tc3-infra-db")]
+    Lambda -->|lê segredos| SM["Secrets Manager\n(JWT secret + credenciais do banco)"]
     Lambda -->|JWT role=CLIENTE| Cliente
     Cliente -->|Authorization: Bearer| App["Aplicação principal (EKS)\nfiap-TC1-oficina"]
 ```
@@ -78,6 +78,8 @@ terraform init
 terraform apply -var="ambiente=homologacao" -var="lambda_zip_path=../build/lambda.zip"
 ```
 
-O deploy automático (`.github/workflows/ci-cd.yml`) só roda quando a variável de repositório `DEPLOY_TO_AWS` está `true` — enquanto a conta AWS do desafio não é liberada pela FIAP, o pipeline para no job `package` (testes + build do `.zip`), sem tentar aplicar Terraform. Segredo/variável necessários no GitHub para habilitar o deploy: secret `AWS_ROLE_ARN` (OIDC, sem chaves estáticas) e variável `AWS_REGION`.
+O deploy automático (`.github/workflows/ci-cd.yml`) só roda quando a variável de repositório `DEPLOY_TO_AWS` está `true`. Segredo/variável necessários no GitHub para habilitar: secret `AWS_ROLE_ARN` (OIDC, sem chaves estáticas) e variável `AWS_REGION`.
+
+> **Nota AWS Academy Learner Lab:** a conta usada neste desafio bloqueia a criação de role/OIDC provider necessários para esse job de deploy via GitHub Actions funcionar. O deploy real foi feito rodando `terraform apply` localmente, com credenciais de sessão do Learner Lab (válidas por poucas horas) — o pipeline no CI para no job `package` (testes + build do `.zip`), que não depende de credenciais AWS.
 
 Branch `main` protegida, deploy só via Pull Request; push em `main` publica em produção, push em `homologacao` publica em homologação (ver `environment:` do job `deploy`).
